@@ -1,0 +1,63 @@
+
+- name: Make sure Java is installed
+  shell: which java
+  register: java_which
+  failed_when: java_which.rc not in [0,1]
+
+- name: Install Java
+  become: yes
+  yum: name=java-1.8.0-openjdk.x86_64 state=present
+  when: java_which.rc == 1
+
+- name: Download and install the public signing key
+  command: rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+
+- name: Add Elasticsearch repo
+  become: yes
+  template: src=elasticsearch.repo.j2 dest=/etc/yum.repos.d/elasticsearch-{{ es_major_version }}.repo
+
+- name: Install Elasticsearch
+  become: yes
+  yum: name=elasticsearch-{{ es_version }} state=present update_cache=yes
+
+- name: Create directories
+  become: yes
+  file: path={{ item }} state=directory owner={{ es_user }} group={{ es_group }}
+  with_items:
+    - "{{ es_pid_dir }}"
+    - "{{ es_log_dir }}"
+    - "{{ es_conf_dir }}"
+
+- name: Copy conf file
+  become: yes
+  template: src=elasticsearch.yml.j2 dest={{ es_conf_dir }}/elasticsearch.yml owner={{ es_user }} group={{ es_group }} mode=0644
+
+- name: Copy jvm.options file
+  become: yes
+  template: src=jvm.options.j2 dest={{ es_conf_dir }}/jvm.options owner={{ es_user }} group={{ es_group }} mode=0660
+
+- name: Copy environment file
+  become: yes
+  template: src=elasticsearch.j2 dest={{ es_env_file }} owner={{ es_user }} group={{ es_group }}
+
+- name: Copy systemd file
+  template: src=systemd/elasticsearch.service.j2 dest=/usr/lib/systemd/system/elasticsearch.service owner=root group=root mode=0644
+
+- name: Install elasticsearch plugins
+  become: yes
+  command: "{{es_home}}/bin/elasticsearch-plugin install {{ item.plugin }} --batch --silent"
+  register: plugin_installed
+  failed_when: "'ERROR' in plugin_installed.stdout"
+  with_items: "{{ es_plugins }}"
+  when: es_plugins|length > 0
+  environment:
+    ES_PATH_CONF: "{{ es_conf_dir }}"
+  until: plugin_installed.rc == 0
+
+- name: Enable elasticsearch.service
+  become: yes
+  systemd:
+    name: elasticsearch.service
+    state: restarted
+    daemon_reload: yes
+    enabled: yes

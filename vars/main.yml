@@ -1,0 +1,4 @@
+es_home: "/usr/share/elasticsearch"
+es_env_file: /etc/sysconfig/elasticsearch
+es_user: elasticsearch
+es_group: elasticsearch
