@@ -41,6 +41,7 @@
   template: src=elasticsearch.j2 dest={{ es_env_file }} owner={{ es_user }} group={{ es_group }}
 
 - name: Copy systemd file
+  become: yes
   template: src=systemd/elasticsearch.service.j2 dest=/usr/lib/systemd/system/elasticsearch.service owner=root group=root mode=0644
 
 - name: Install elasticsearch plugins
