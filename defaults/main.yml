@@ -2,7 +2,6 @@ es_major_version: "6"
 es_version: "6.2.3"
 
 cluster_name: test-cluster
-node_name: test-node
 
 es_pid_dir: /var/run/elasticsearch
 es_path_data: /var/lib/elasticsearch
